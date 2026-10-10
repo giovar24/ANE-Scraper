@@ -16,11 +16,12 @@ def leer_historial() -> set[int]:
         return set()
 
 
-def guardar_historial(ids: set[int]) -> None:
-    """Escribe IDs ordenados al historial (uno por línea)."""
+def guardar_historial(ids: set[int]) -> set[int]:
+    """Escribe IDs ordenados al historial (uno por línea). Devuelve el set guardado."""
     HISTORIAL.parent.mkdir(parents=True, exist_ok=True)
     with open(HISTORIAL, "w", encoding="utf-8", newline="") as fh:
         fh.write("".join(f"{i}\n" for i in sorted(ids)))
+    return ids
 
 
 def a_int(valor: str | None) -> int | None:
