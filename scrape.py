@@ -13,6 +13,7 @@ import argparse
 import csv
 import json
 import logging
+import logging.handlers
 import math
 import random
 import re
@@ -49,7 +50,9 @@ MESES = {
 log = logging.getLogger("ane")
 log.setLevel(logging.INFO)
 fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(message)s", "%Y-%m-%d %H:%M:%S")
-fh = logging.FileHandler(CHK / "scrape.log", encoding="utf-8")
+fh = logging.handlers.RotatingFileHandler(
+    CHK / "scrape.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8"
+)
 fh.setFormatter(fmt)
 ch = logging.StreamHandler()
 ch.setFormatter(fmt)
@@ -256,8 +259,8 @@ def obtener(ctx, url: str, intentos: int = 3, requiere_sesion: bool = False) -> 
             if resp.status >= 500:
                 raise RuntimeError(f"HTTP {resp.status}")
             html = resp.text()
-            if requiere_sesion and "dashboard-content-inner" not in html:
-                raise RuntimeError("detalle sin contenedor (¿sesión caducada?)")
+            if requiere_sesion and not _sesion_valida(html):
+                raise RuntimeError("sesión ANE caducada o inválida (redirige a login)")
             return html
         except Exception as e:  # noqa: BLE001
             espera = (2, 5, 10)[min(i, 2)]
@@ -266,6 +269,22 @@ def obtener(ctx, url: str, intentos: int = 3, requiere_sesion: bool = False) -> 
                 raise
             time.sleep(espera)
     return None
+
+
+def _sesion_valida(html: str) -> bool:
+    """Detecta si la sesión ANE sigue activa en el HTML devuelto."""
+    # Indicadores de sesión EXPIRADA (página de login/registro)
+    if "Cuenta/RegistroUsuario" in html:
+        return False
+    if "Iniciar sesión" in html and "dashboard-content-inner" not in html:
+        return False
+    if 'id="loginForm"' in html or 'name="login"' in html.lower():
+        return False
+    # Indicador de sesión VÁLIDA
+    if "dashboard-content-inner" in html:
+        return True
+    # Por defecto: asumir válida si no hay señales claras de expiración
+    return True
 
 
 # ---------------------------------------------------------------- main

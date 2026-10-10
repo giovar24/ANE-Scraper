@@ -1,11 +1,12 @@
-"""Exporta reporte simple diario de puestos NUEVOS (--nuevos por defecto).
+"""Exporta reporte simple diario de puestos (--nuevos por defecto, --all para todos).
 
 Lee salida/puestos_enriquecidos.csv y salida/historial_ids.txt.
 Escribe salida/puestos_simple_YYYY-MM-DD.xlsx con 18 columnas esenciales.
-Actualiza historial_ids.txt con todos los IDs actuales tras exportar.
+Actualiza historial_ids.txt con todos los IDs actuales tras exportar (solo modo --nuevos).
 
 Uso:
-    python export_simple.py                    # exporta nuevos
+    python export_simple.py                    # exporta nuevos (default)
+    python export_simple.py --all              # exporta TODOS (ignora historial)
     python export_simple.py --output RUTA      # ruta personalizada
 """
 import argparse
@@ -23,6 +24,9 @@ try:
     from openpyxl.utils import get_column_letter
 except ImportError:
     raise SystemExit("Falta openpyxl: .venv\\Scripts\\python.exe -m pip install openpyxl")
+
+# Importar funciones compartidas
+from historial import leer_historial, guardar_historial, a_int, filtrar_nuevos
 
 SRC = Path("salida/puestos_enriquecidos.csv")
 HISTORIAL = Path("salida/historial_ids.txt")
@@ -53,7 +57,7 @@ ANCHOS = {
 }
 
 
-def parsear_fecha(txt):
+def parsear_fecha(txt: str | None) -> dt.date | None:
     """Convierte 'miércoles, 30 de septiembre del 2026' -> date(2026,9,30) o None."""
     m = RE_FECHA.match(txt or "")
     if not m:
@@ -67,30 +71,9 @@ def parsear_fecha(txt):
         return None
 
 
-def leer_historial():
-    """Devuelve set de IDs leídos del historial; set() si no existe."""
-    try:
-        with open(HISTORIAL, encoding="utf-8") as fh:
-            return {int(line.strip()) for line in fh if line.strip().isdigit()}
-    except FileNotFoundError:
-        return set()
-
-
-def guardar_historial(ids):
-    """Escribe IDs ordenados al historial (uno por línea)."""
-    with open(HISTORIAL, "w", encoding="utf-8", newline="") as fh:
-        fh.write("".join(f"{i}\n" for i in sorted(ids)))
-
-
-def a_int(valor):
-    try:
-        return int(valor)
-    except (ValueError, TypeError):
-        return None
-
-
-def main():
-    ap = argparse.ArgumentParser(description="Exporta reporte simple de puestos nuevos a XLSX")
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Exporta reporte simple de puestos a XLSX")
+    ap.add_argument("--all", action="store_true", help="Exporta TODOS los puestos (ignora historial)")
     ap.add_argument("--output", default=None, help="Ruta XLSX de salida (default: salida/puestos_simple_<hoy>.xlsx)")
     args = ap.parse_args()
 
@@ -109,24 +92,21 @@ def main():
     if not rows:
         raise SystemExit(f"{SRC} está vacío.")
 
-    # Leer historial y filtrar nuevos
-    hist = leer_historial()
-    nuevos = []
-    ids_actuales = set()
-    for r in rows:
-        i = a_int(r.get("id", ""))
-        if i is not None:
-            ids_actuales.add(i)
-        if hist and i is not None and i in hist:
-            continue
-        nuevos.append(r)
+    # Filtrar según modo
+    if args.all:
+        nuevos = rows
+        ids_actuales = {a_int(r.get("id", "")) for r in rows if a_int(r.get("id", "")) is not None}
+        hist = set()
+        print(f"  modo --all: exportando {len(nuevos)} puestos (ignora historial)")
+    else:
+        hist = leer_historial()
+        nuevos, ids_actuales = filtrar_nuevos(rows, hist)
+        print(f"  historial: {len(hist)} ids")
+        print(f"  nuevos: {len(nuevos)} de {len(ids_actuales)} puestos actuales")
 
     if not nuevos:
         print("  sin puestos nuevos: no se genera archivo")
-        return
-
-    print(f"  historial: {len(hist)} ids")
-    print(f"  nuevos: {len(nuevos)} de {len(ids_actuales)} puestos actuales")
+        return 0
 
     # Construir filas de salida
     datos = []
@@ -177,9 +157,10 @@ def main():
             "  Cierre ese archivo en Excel y vuelva a ejecutar."
         )
 
-    # Actualizar historial con TODOS los IDs actuales
-    guardar_historial(hist | ids_actuales)
-    print(f"  historial actualizado: {len(hist)} -> {len(hist | ids_actuales)} ids -> {HISTORIAL}")
+    # Actualizar historial solo en modo --nuevos (default)
+    if not args.all:
+        nuevo_hist = guardar_historial(hist | ids_actuales)
+        print(f"  historial actualizado: {len(hist)} -> {len(nuevo_hist)} ids -> {HISTORIAL}")
 
     # Verificación rápida
     wb2 = __import__("openpyxl").load_workbook(dst)
@@ -188,6 +169,8 @@ def main():
     n_filas = ws2.max_row
     print(f"OK: {dst} | {n_filas - 1} filas x {n_cols} columnas")
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

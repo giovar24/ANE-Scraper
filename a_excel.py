@@ -29,6 +29,9 @@ try:
 except ImportError:
     raise SystemExit("Falta openpyxl: .venv\\Scripts\\python.exe -m pip install openpyxl")
 
+# Importar funciones compartidas de historial
+from historial import leer_historial as _leer_historial, guardar_historial as _guardar_historial
+
 SRC = "salida/puestos_enriquecidos.csv"
 DST = "salida/puestos.xlsx"
 HISTORIAL = "salida/historial_ids.txt"
@@ -85,17 +88,12 @@ def a_id(f):
 
 def leer_historial():
     """Devuelve (conjunto de ids, maximo id) de HISTORIAL; (set(), 0) si no existe."""
-    try:
-        with open(HISTORIAL, encoding="utf-8") as fh:
-            ids = {int(line.strip()) for line in fh if line.strip().isdigit()}
-    except FileNotFoundError:
-        return set(), 0
+    ids = _leer_historial()
     return ids, (max(ids) if ids else 0)
 
 
 def guardar_historial(ids):
-    with open(HISTORIAL, "w", encoding="utf-8", newline="") as fh:
-        fh.write("".join(f"{i}\n" for i in sorted(ids)))
+    _guardar_historial(ids)
 
 
 def filas_previas(dst):
