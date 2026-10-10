@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Output files
+salida/*.xlsx
+salida/*.csv
+salida/historial_ids.txt
+
+# Checkpoints
+checkpoints/*.json
+checkpoints/*.jsonl
+checkpoints/*.log
+checkpoints/html/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

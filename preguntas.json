@@ -1,0 +1,27 @@
+{
+  "perfil": "Profesional con formacion en tecnologia y datos, buscando puesto de tiempo completo en Costa Rica, abierto a teletrabajo y a firmas con buena reputacion",
+  "preguntas": {
+    "decision": {
+      "type": "choice",
+      "instructions": "Deberia este puesto entrar en mi lista corta para revisarlo? Perfil del usuario: {perfil}",
+      "criteria": {
+        "A": "si, encaja con el perfil y con las condiciones buscadas",
+        "B": "no, no encaja con el perfil o las condiciones",
+        "C": "dudoso, conviene revisarlo a mano"
+      }
+    },
+    "teletrabajo": {
+      "type": "choice",
+      "instructions": "Este puesto ofrece teletrabajo o trabajo remoto?",
+      "criteria": {
+        "A": "si, menciona teletrabajo, remoto o trabajo desde casa",
+        "B": "no lo menciona o es presencial"
+      }
+    },
+    "exigencia": {
+      "type": "score",
+      "instructions": "Que tan exigente es el puesto en formacion y experiencia requisitadas?",
+      "criteria": ["baja", "media", "alta"]
+    }
+  }
+}
